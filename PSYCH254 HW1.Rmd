@@ -1,0 +1,97 @@
+---
+title: "PSYCH254 HW1"
+output: html_document
+date: "2026-01-11"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# load packages
+library(rblimp)
+library(ggplot2)
+
+# load data
+connect <- url("https://raw.githubusercontent.com/craigenders/mlm/main/data/EmployeeSatisfactionData.RData", "rb")
+load(connect); close(connect)
+
+# load misc functions
+# source("https://raw.githubusercontent.com/craigenders/mlm/main/mlm-functions.R")
+
+df <- Employee
+```
+
+### 1. Describe the level-1 (within-cluster) and level-2 (between-cluster) units for this analysis. (2 points)
+
+```{r}
+colnames(df)
+```
+The level-1 (within-cluster) units in this analysis are employees, and the level-2 (between-cluster) units are teams. In this dataset, we have that each employee belongs to one team and employees within the same team may be more similar to each other than to employees on other teams.
+
+### 2. Write out the within-cluster and between-cluster regression equations, then perform substitution to obtain the combined-model equation. You can take a screenshot or photo of your calculation and upload it to BruinLearn, or you can type in your equations into the quiz question’s text field. (2 points)
+
+Between-cluster
+$$\beta_{0j}=\gamma_{00}+U_{0j}$$
+$\gamma_{00}$ is the grand mean empowerment across all teams (the overall mean) and $U_{0j}$ is team j's deviation from the grand mean.
+
+Within-cluster
+$$Empower_{ij}=\beta_{0j}+\epsilon_{ij}$$
+$\beta_{ij}$ is team j's mean empowerment and $\epsilon_{ij}$ is the employee-level deviation from team j's mean.
+
+Combined-model
+$$Empower_{ij} = (\gamma_{00}+U_{0j})+\epsilon_{ij}$$
+
+### 3. Estimate an unconditional (empty) multilevel model with employee empowerment as the outcome variable. Upload a screen shot of the regression summary table into the BruinLearn quiz. (1 point)
+
+```{r}
+mod <- rblimp(
+  data = df,
+  clusterid = 'Team',
+  model = 'Empower ~ intercept | intercept',
+  seed = 123,
+  burn = 10000,
+  iter = 10000
+)
+output(mod)
+
+```
+
+### 4. Referring to the level-1 equation, describe the concept of a random intercept in the context of this study. What is a random intercept and what does it quantify? (2 points)
+
+In the context of this study, the random intercept represents the between-cluster variation for empowerment. It is essentially the baseline level of empowerment for each team, not assuming that all teams start at the same average. It quantifies how much teams differ from one another in their average empowerment scores, capturing between-team variation not explained by individual employees.
+
+### 5. Provide a brief (but thorough and specific) interpretation of the fixed intercept (fixed effect) coefficient, making sure to cite its numeric value from the printout. Explain why the fixed intercept is a level-2 parameter. (2 points)
+
+The estimated fixed intercept (fixed effect) coefficient of this model is 28.603. This represents the overall average empowerment score across all employees and all teams. This is referred to as the "Grand Mean". The interpretation of the coefficient is that the expected empowerment score for an employee on an average team is 28.603. 
+
+It is a level-2 parameter because it represents the person-level (or in this case, team-level) means.
+
+### 6. Provide a brief (but thorough and specific) interpretation of the between-cluster (level-2) variance (or standard deviation) estimate, making sure to cite its numeric value from the printout. Be very specific about the deviation score underlying this estimate. (2 points)
+
+The estimated between-cluster (level-2) variance is 2.530. This represents the variance of the random intercepts across teams. In this situation, it represents how much teams vary in their deviation from the grand mean. While the expected deviation for team j is zero, a typical team deviates from the grand mean by about 1.59 units ($\sqrt{2.530}=1.59$).
+
+### 7. If you ran an ANOVA analysis and designated the team variable as the factor (or a regression analysis that dummy coded the teams), you could also get a variance estimate that quantifies between-group mean differences. Explain how ANOVA and the multilevel model differ in how they view the levels of the team factor and level-2 units, respectively. (2 points)
+
+In ANOVA, level-2 units represent all possible groups of interest. Essentially, they are distinct, fixed categories and ANOVA estimates the fixed mean differences.
+
+In multilevel models, level-2 units are treated as samples from a larger population of clusters. Rather than estimating fixed mean differences, it modeles team-level variation as random effects and allows for varying effects within and between teams. This captures team-specific conext rather than jjust fixed group means.
+
+### 8. Provide a brief (but thorough and specific) interpretation of the within-cluster (Level-1) variance (or standard deviation) estimate, making sure to cite its numeric value from the printout. Be very specific about the deviation score underlying this estimate. (2 points)
+
+The estimated within-cluster (level-1) variance is 18.124. This represents the variability in employee empowerment among individuals within the same team that is not explained by the model. Given this, the standard deviation of an individual employee's empowerment score from their own team is 4.257 ($\sqrt{18.124}=4.257$). For employees within the same team, their empowerment scores typically differ from their team mean by about 4.257 units. Specifically, this is the average squared deviation of an individual employee’s empowerment score from their own team’s mean empowerment score.
+
+### 9. Using the variance estimates from the computer printout, compute the intraclass correlation by hand. It should match the value on the printout. You can take a screenshot or photo of your calculation and upload it to BruinLearn, or you can type in your computation into the quiz question’s text field. (1 point)
+
+
+Between-cluster variation = 2.530
+
+Within-cluster variation = 18.124
+
+$ICC = \frac{Between-cluster}{Between-cluster+Within-cluster}$
+
+$ICC = \frac{2.530}{2.530+18.124}$
+
+$ICC = 0.123$
+
+### 10. Provide a brief (but thorough) interpretation of the intraclass correlation in the context of this study. (2 points)
+
+The intraclass correlation (ICC) measures internal homogeneity of level-2 units, essentially capturing the proportion of total variance in an outcome that is attributable to differences between groups. In this study, the ICC is 0.123, which indicates that 12.3% of the variance in employee empowerment scores is explained by differences between teams.

@@ -1,0 +1,161 @@
+---
+title: "PSYCH254 HW3"
+output:
+  html_document: default
+  pdf_document: default
+date: "2026-01-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# load packages
+library(ggplot2)
+library(rblimp)
+filepath <- 'https://raw.githubusercontent.com/craigenders/mlm/main/data/ProblemSolving.csv'
+
+# create data frame from github data
+ProbSolve <- read.csv(filepath, stringsAsFactors = T)
+
+# plotting functions
+source('https://raw.githubusercontent.com/blimp-stats/blimp-book/main/misc/functions.R')
+
+
+df <- ProbSolve
+```
+
+### 1) Estimate an unconditional (empty) model for the three level-1 variables in the model. This can be done in a single analysis (see lecture slides). Because frlunch is binary, you will need to list this variable after the nominal command to invoke an appropriate categorical variable (logistic) model. The nominal commands are as follows. 
+
+### * nominal: frlunch; # Blimp Studio 
+
+### * nominal = 'frlunch', # rblimp 
+
+### Obtain the intraclass correlation (ICC) for each level-1 predictor. Blimp prints these in the effect size section of each summary table. Type the values of the ICCs into the quiz question’s text field. (1 point)
+
+
+```{r}
+p1_mod <- rblimp(
+  data = df,
+  clusterid = 'school',
+  nominal = 'frlunch',
+  model = '
+  psolvepre ~ intercept | intercept;
+  frlunch ~ intercept | intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+
+output(p1_mod)
+```
+
+The ICC for each level-1 predictor is: 0.797 and 0.886.
+
+### 2) Consider the ICC for the dummy coded lunch assistance variable, frlunch. The ICC for this variable is relatively large. When the level-1 predictor is binary as it is here, what is the between-cluster variation of the variable measuring? (2 points)
+
+When the level-1 predictor is binary, the between-cluster variation of the variable is measuring the differences in the log-odds of the event across schools. Essentially, it represents the between-school differences in the proportion of student receiving free or reduced price lunch.
+
+
+### 3) Fit a model that includes the two level-1 predictors. Center the predictors at their school means (i.e., centering within cluster, group mean centering). Using the simplified notation from class, the model is shown below.
+
+$$psolvepost_{ij} = \beta_0+\beta_1(psolvepre^w_{ij})+\beta_2(frlunch^w_{ij})+u_{0j}+\epsilon_{ij}$$
+
+### In Blimp, you can automatically create a dummy code by listing frlunch after the nominal command. Blimp’s group mean centering function works the same for categorical and continuous predictors. Upload a screen shot of your regression summary table into the BruinLearn quiz. (1 point)
+
+```{r}
+p3_mod <- rblimp(
+  data = df,
+  cluster = 'school',
+  center = 'groupmean = psolvepre frlunch',
+  nominal = 'frlunch',
+  model = '
+  psolvepost ~ intercept psolvepre frlunch | intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+
+output(p3_mod)
+```
+
+### 4) Fit a model that includes the two level-1 predictors (within-cluster or group mean centered), their level-2 school means, and the school-level covariate, eslpct. In Blimp, you can add the level-2 means using the .mean function, as shown in the lecture slides. Center all level-2 variables at their grand means to define the intercept as the post-test grand mean. Using simplified notation from class, the model is shown below. Upload a screen shot of your regression summary table into the BruinLearn quiz. (1 point)
+
+$$psolvepost_{ij} = \beta_0+\beta_1(psolvepre^w_{ij})+\beta_2(frlunch^w_{ij})+
+\beta_3(psolvepre^b_{j})+\beta_4(frlunch^b_{j})+\beta_5(eslpct_j) +u_{0j} +\epsilon_{ij}$$
+
+```{r}
+p4_mod <- rblimp(
+  data = df,
+  cluster = 'school',
+  center = '
+  groupmean = psolvepre frlunch;
+  grandmean = psolvepre.mean frlunch.mean',
+  nominal = 'frlunch',
+  model = '
+  psolvepost ~ intercept psolvepre psolvepre.mean frlunch frlunch.mean eslpct | intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+
+output(p4_mod)
+```
+
+### 5) Fit a final model that adds the school-level intervention code. In Blimp, you can automatically create a dummy code by listing condition on the nominal line. To faciliate interpretation, do not center condition, and keep all other predictors centered as they were in previous steps. Using simplified notation from class, the model is as follows. Upload a screen shot of your regression summary table into the BruinLearn quiz. (1 point)
+
+$$psolvepost_{ij} = \beta_0+\beta_1(psolvepre^w_{ij})+\beta_2(frlunch^w_{ij})+
+\beta_3(psolvepre^b_{j})+\beta_4(frlunch^b_{j})+\beta_5(eslpct_j)+\beta_6(condition_j) +u_{0j} +\epsilon_{ij}$$
+
+```{r}
+p5_mod <- rblimp(
+  data = df,
+  cluster = 'school',
+  center = '
+  groupmean = psolvepre frlunch;
+  grandmean = psolvepre.mean frlunch.mean',
+  nominal = 'frlunch condition',
+  model = '
+  psolvepost ~ intercept psolvepre psolvepre.mean frlunch frlunch.mean eslpct condition| intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+
+output(p5_mod)
+```
+
+
+### 6) Fill in the Rights and Sterba (2019) effect sizes from the four models you fit in the table below, and
+upload a screen shot of the table into the BruinLearn quiz. Do the observed changes in the Rights and Sterba effect sizes make theoretical sense? Why or why not? Your answer should clearly explain which source of variation is targeted—or is theoretically eligible to decrease—at each step of the modeling sequence. (2 points)
+
+Effect sizes:
+
+* M1 = 0
+* M2 = 0.142
+* M3 = 0.267
+* M4 = 0.289
+
+The observed changes in the Rights and Sterba effect sizes make theoretical sense. In the unconditional model, the effect size is 0 because no predictors are included, so the outcome variance is not explained by any fixed effects. The second model increases to 0.142, reflecting the proportion of within-school variation explained by the level-1 group-mean centered predictors. The third model introduces school means of the level-1 predictors as well as a school-level covariate and we observe an effect size of 0.267. Including these variables explain the between-school variataion in the outcome, reflecting a reduction in random intercept variance attributed to school differences. The final model adds the school-level intervention indicator and we observe a modest increase in effect size to 0.289, indicating further reduction in between-school variation aside from what was already explained by the other level-2 covariates. 
+
+### 7) Evaluate the following statement: "The condition coefficient represents the effect of the treatment, controlling for (holding constant / partialing out) pretest problem-solving scores, free/reduced lunch status, and the percentage of ESL students in a school." Explain precisely which aspect of each variable serves as the control, and why. (2 points)
+
+
+```{r}
+
+```
+
+### 8) The motivating research question is whether the intervention was effective, controlling for covariates measured at the student and school levels. Using the results from Model 4, report the (a) model-predicted means for the treatment and control groups (both values are obtainable from the fitted model), (b) whether the intervention effect was statistically significant, and (c) an R2 effect size that represents the unique influence of the intervention variable net the covariates. Provide a brief summary of your conclusion about the effectiveness of the intervention. (2 points)
+
+The intercept represents the predicted mean outcome for the control group/schools (condition = 0) when all centered predictors are zero. In this case, the intercept is 51.473. The model-predicted mean for the treatment group (control = 1) is the intercept + the coefficient of condition (1.814), which is 53.287. Holding all else equal, the model predicts that treatment schools score about 1.81 points higher than control schools on the posttest, on average. 
+
+Based on the p-value (0.046), the intervention effect was barely statistically significant. However, the 95% credible interval does include zero, suggesting that the effect is marginal at best or may even trend towards null.
+
+The $R^2$ for this model is 0.289 whereas for the previous model, it was 0.267. The attributable effect of the intervention can be viewed as $\Delta R^2 = 0.289 - 0.267 = 0.022$. 2.2% of total outcome variation can be attributed to the intervention aside from student- and school-level covariates.
+
+
+### 9) The analysis examples we have used thus far set the number of burn-in iterations to 10,000 and the number of post-burn-in iterations to 10,000. Are these values sufficient for this analysis? In your answer, identify which diagnostic information addresses the adequacy of each value, and report the specific evidence from your output that supports your conclusion. (2 points)
+
+The burn-in and post–burn-in iteration values appear sufficient based on the convergence and efficiency diagnostics in the output. The adequacy of the 10,000 burn-in iterations is supported by the Potential Scale Reduction (PSR) statistics: although early PSR values were above 1 (e.g., 1.249), by the final window (iterations 5001–10000) the highest PSR was 1.012, which is very close to 1.00 and below the common 1.05 threshold, indicating that the chains had converged. The adequacy of the 10,000 post–burn-in iterations is supported by the large effective sample sizes (N_Eff), which are very high for most parameters (many above 9,000) and even the smallest values exceed typical minimum recommendations (e.g., > 200–400). Together, the PSR and N_Eff values indicate that the chains converged properly and that the posterior estimates are based on sufficient effective sampling, suggesting that 10,000 burn-in and 10,000 post–burn-in iterations were adequate for this analysis.
+
+
+### 10) To practice with different notational schemes, write the level-1 and level-2 equations for the final model in Equation 4 (i.e., the two-level notation from Raudenbush and Bryk’s book). Perform substitution to obtain the so-called combined-model regression equation. Upload a screen shot of your equations into the BruinLearn quiz. (2 points)
+

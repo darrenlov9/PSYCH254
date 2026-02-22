@@ -1,0 +1,105 @@
+---
+title: "PSYCH254 HW2"
+output: html_document
+date: "2026-01-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# load packages
+library(rblimp)
+library(ggplot2)
+
+# load data
+connect <- url("https://raw.githubusercontent.com/craigenders/mlm/main/data/EmployeeSatisfactionData.RData", "rb")
+load(connect); close(connect)
+
+# load misc functions
+# source("https://raw.githubusercontent.com/craigenders/mlm/main/mlm-functions.R")
+
+df <- Employee
+```
+
+### 1) Estimate an unconditional (empty) multilevel model with both employee empowerment and leader-member exchange (the predictor) as outcome variables. Upload a screen shot of the regression summary tables into the BruinLearn quiz. (1 point)
+
+
+```{r}
+p1_mod <- rblimp(
+  data = df,
+  clusterid = 'Team',
+  model = '
+    Empower ~ intercept | intercept;
+    LMX ~ intercept | intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+
+output(p1_mod)
+
+```
+
+### 2) Explain the concept of disaggregation as it applies to the leader-member exchange predictor. Why is disaggregation necessary here, and what specific problems or biases would arise if we failed to disaggregate this predictor? (2 point)
+
+Disaggregation in multilevel modeling separates a predictor into within-group and between-group components so that effects at different levels are estimated correctly and interpreted clearly. If disaggregation is not performed, within- and between-group effects may be conflated, even when they differ in magnitude, direction, or sign. Additionally, failing to disaggregate can lead to ecological and atomistic fallacies, as group-level relationships may be incorrectly attributed to individuals and individual-level relationships to groups.
+
+In the context of leader-member exchange, disaggregation is needed because employees are nested within teams and leader-member exchange can vary both within and between teams, as indicated by a nontrivial ICC. Disaggregating allows us to distinguish whether outcomes are driven by an employee’s relative standing with their leader (within-leader LMX) or by working for a leader who generally has high-quality relationships (between-leader LMX). Failing to disaggregate would confound these effects, potentially yielding misleading conclusions about the true source of LMX effects and biased parameter estimates.
+
+
+### 3) Estimate a model with group mean-centered leader-member exchange as the level-1 predictor and its team-level means as a level-2 predictor. Center the team-level means at the grand mean. This model should include both the within-cluster and between-cluster effects of leader-member exchange. Upload a screen shot of the regression summary table into the BruinLearn quiz. (1 point)
+
+```{r}
+p3_mod <- rblimp(
+  data = df,
+  clusterid = 'Team',
+    center = 'grandmean = LMX.mean;
+            groupmean = LMX',
+  model = 'Empower ~ intercept LMX LMX.mean| intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+output(p3_mod)
+```
+
+### 4) Provide a brief (but thorough and specific) interpretation of the fixed intercept, making sure to cite its numeric value from the printout. Your interpretation should address what the intercept represents given how the predictors are centered. (2 points)
+
+The estimated fixed intercept of this model is 28.604. Because Team is grand-mean centered and LMX is group-mean centered, this intercept represents the expected empowerment score for an employee whose LMX is at their team’s average and who belongs to an average team. It can be interpreted as the overall baseline (grand mean-referenced) level of empowerment for a typical employee in a typical team, prior to accounting for within-team deviations in LMX between-team differences.
+
+
+### 5) Provide a brief (but thorough and specific) interpretation of the within-cluster slope (the effect of group mean-centered leader-member exchange), making sure to cite its numeric value from the printout. (2 points)
+
+The estimated within-cluster slope for leader-member exchange (LMX) is 0.687. Because LX is group-mean centered for the model, this represents the expected difference in empowerment score associated with a one-unit increase in an employee's LMX relative to their own team's average LMX, on average. Essentially, employees who report higher-quality relationships with their supervisors than their coworkers are expected to score about 0.69 points higher on empowerment for every additional unit increase above the team average. This reflects the within-team effect of LMX on empowerment scores.
+
+### 6) Provide a brief (but thorough and specific) interpretation of the between-cluster slope (the effect of team-level mean leader-member exchange), making sure to cite its numeric value from the printout. (2 points)
+
+The estimated between-cluster slope for team-level mean leader-member exchange is -0.087. Because the level-2 parameter, Team, is grand-mean centered, it represents the expected difference in empowerment score associated with a one-unit increase in a team's average LMX relative to the overall sample mean, holding level-1 unit (LMX) constant. Essentially, teams with higher average LMX do not have meaningfully different empowerment scores than average teams once accounting for within-team LMX differences.
+
+### 7) Estimate a "smushed" model with leader-member exchange as the predictor, centered at the grand mean. Do not disaggregate the predictor for this model—use the intact leader-member exchange variable. Upload a screen shot of the regression summary table into the BruinLearn quiz. (1 point)
+
+```{r}
+p7_mod <- rblimp(
+  data = df,
+  clusterid = 'Team',
+  center = 'grandmean = LMX',
+  model = 'Empower ~ intercept LMX | intercept',
+  seed = 90291,
+  burn = 10000,
+  iter = 10000
+)
+output(p7_mod)
+```
+
+### 8) Compare the three slope coefficients you estimated: the within-cluster slope from #3, the between-cluster slope from #3, and the smushed model slope from #7. The smushed model slope is substantially lower than the within-cluster slope. Explain why this occurs, paying particular attention to the magnitude and direction of the between-cluster slope. (2 points)
+
+
+* Model 3 within-cluster = 0.687
+* Model 3 between-cluster = -0.087
+* Model 7 slope = 28.621, 0.637
+
+The within-cluster slope from the model in #3 was 0.687 and the between-cluster slope was -0.087. The smushed model slope from the model in #7 was 0.637. The smushed model is lower than the within-cluster slope because it mixes two sources of variation -- variation within clusters and variation between clusters -- into a single coefficient, and the ICC of about 0.18 indicates that a meaningful portion of the variance lies between teams.. In this case, the within-cluster relationship is positive and relatively strong, indicating that higher LMX is associated with higher Empower within the same team, whereas the between-cluster relationship is negative, meaning that teams with higher average LMX tend to have slightly lower average Empower. Since these two are combined in the smushed model, the negative between-cluster coefficient pulls the overall estimate downward, partially offsetting the positive within-cluster effect, which results in a pooled slope that is smaller than the true within-cluster slope.
+
+
+```{r}
+
+```
